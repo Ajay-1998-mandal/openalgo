@@ -510,7 +510,12 @@ def start_strategy_process(strategy_id):
             strategy_env["OPENALGO_STRATEGY_EXCHANGE"] = normalize_exchange(
                 config.get("exchange")
             )
-            strategy_env.setdefault("OPENALGO_HOST", "http://127.0.0.1:5000")
+            # Point at this instance's own port: install-multi.sh runs each
+            # instance on its own FLASK_PORT, so a fixed 5000 would send a
+            # second instance's strategies to the first instance.
+            strategy_env.setdefault(
+                "OPENALGO_HOST", f"http://127.0.0.1:{os.getenv('FLASK_PORT', '5000')}"
+            )
             try:
                 from database.auth_db import get_api_key_for_tradingview
                 user_id = config.get("user_id")
