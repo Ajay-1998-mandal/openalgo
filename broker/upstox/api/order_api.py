@@ -237,6 +237,15 @@ def place_order_api(data, auth):
 
     except httpx.HTTPStatusError as e:
         logger.exception(f"HTTP error placing order: {e.response.text}")
+        # Same compatibility shim as the success path above (line ~224) -
+        # the caller (services/place_smart_order_service.py etc.) reads
+        # res.status, not res.status_code, on every response including a
+        # rejected order. Without this, a real broker rejection (e.g. a 403
+        # from Upstox's static-IP restriction) raised an AttributeError here
+        # that masked the actual rejection reason behind a generic 500
+        # "internal error" - the caller never got to see e.response.json()'s
+        # real message.
+        e.response.status = e.response.status_code
         return e.response, e.response.json(), None
     except Exception as e:
         logger.exception("Unexpected error in place_order_api")

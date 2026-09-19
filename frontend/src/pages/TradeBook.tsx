@@ -241,7 +241,11 @@ export default function TradeBook() {
         sanitizeCSV(t.exchange),
         ...(isCrypto ? [] : [sanitizeCSV(t.product)]),
         sanitizeCSV(t.action),
-        sanitizeCSV(t.quantity),
+        sanitizeCSV(
+          (t.exchange === 'CRYPTO' && t.lot_size)
+            ? t.quantity * t.lot_size
+            : t.quantity
+        ),
         sanitizeCSV(t.average_price),
         sanitizeCSV(t.trade_value),
         sanitizeCSV(t.orderid),
@@ -569,7 +573,11 @@ export default function TradeBook() {
                           {trade.action}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">{trade.quantity}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {(trade.exchange === 'CRYPTO' && trade.lot_size)
+                          ? trade.quantity * trade.lot_size
+                          : trade.quantity}
+                      </TableCell>
                       <TableCell className="text-right font-mono">
                         {formatCurrency(trade.average_price)}
                       </TableCell>

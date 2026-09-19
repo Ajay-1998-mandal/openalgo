@@ -70,7 +70,7 @@ PRODUCT = os.getenv("PRODUCT", "MIS")             # MIS (Intraday) or CNC (Deliv
 # Strategy Parameters
 FAST_EMA_PERIOD = int(os.getenv("FAST_EMA_PERIOD", "2"))
 SLOW_EMA_PERIOD = int(os.getenv("SLOW_EMA_PERIOD", "4"))
-CANDLE_TIMEFRAME = os.getenv("CANDLE_TIMEFRAME", "5m")
+CANDLE_TIMEFRAME = os.getenv("CANDLE_TIMEFRAME", "5")  # Groww uses numeric minutes: 1, 5, 10, 60, 240, 1440, 10080
 
 # Historical Data Lookback (1-30 days)
 LOOKBACK_DAYS = int(os.getenv("LOOKBACK_DAYS", "3"))

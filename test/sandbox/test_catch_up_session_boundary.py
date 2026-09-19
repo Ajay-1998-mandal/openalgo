@@ -215,7 +215,7 @@ def test_crypto_mis_positions_are_skipped(monkeypatch):
     last_session_expiry = _last_session_expiry()
     position = _create_position(
         user_id=user_id,
-        symbol="BTCUSD.P",
+        symbol="BTCUSDFUT",
         exchange="CRYPTO",
         product="MIS",
         quantity=10,

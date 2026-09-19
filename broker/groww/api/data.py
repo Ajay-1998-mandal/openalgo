@@ -109,18 +109,30 @@ class BrokerData:
         self.auth_token = auth_token
         # Map common timeframe format to Groww resolutions (in minutes)
         # Only including timeframes that Groww actually provides
+        # Accept both common formats (1m, 5m, etc.) AND numeric minutes (1, 5, 10, etc.)
+        # since Groww API expects numeric minutes directly
         self.timeframe_map = {
-            # Minutes
+            # Minutes - with 'm' suffix
             "1m": "1",  # 1 minute
             "5m": "5",  # 5 minutes
             "10m": "10",  # 10 minutes
+            # Minutes - numeric only (Groww API native format)
+            "1": "1",
+            "5": "5",
+            "10": "10",
             # Hours
             "1h": "60",  # 1 hour (60 minutes)
             "4h": "240",  # 4 hours (240 minutes)
+            "60": "60",
+            "240": "240",
             # Daily
             "D": "1440",  # Daily data (1440 minutes)
+            "1d": "1440",
+            "1440": "1440",
             # Weekly
             "W": "10080",  # Weekly data (10080 minutes)
+            "1w": "10080",
+            "10080": "10080",
         }
 
         # The duration-based interval constraints as documented in the Groww API

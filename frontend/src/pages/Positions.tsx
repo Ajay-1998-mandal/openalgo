@@ -76,6 +76,7 @@ interface FilterState {
 interface Preferences {
   grouping: GroupingType
   filters: FilterState
+  hideClosed?: boolean
 }
 
 function parseSymbol(symbol: string, exchange: string) {
@@ -104,6 +105,7 @@ function parseSymbol(symbol: string, exchange: string) {
 function calculatePnlPercent(position: Position): number {
   const avgPrice = Number(position.average_price) || 0
   const qty = Number(position.quantity) || 0
+  const lotSize = Number(position.lot_size) || 1
   const pnl = Number(position.pnl) || 0
 
   // Use API-provided pnlpercent if available
@@ -113,9 +115,10 @@ function calculatePnlPercent(position: Position): number {
 
   if (avgPrice === 0) return 0
 
-  // For open positions with quantity, calculate based on investment
+  // For open positions with quantity, calculate based on investment.
+  // lot_size converts contract count to real units (e.g. 1 DOGEUSD contract = 100 DOGE).
   if (qty !== 0) {
-    const investment = Math.abs(avgPrice * qty)
+    const investment = Math.abs(avgPrice * qty * lotSize)
     return investment > 0 ? (pnl / investment) * 100 : 0
   }
 
@@ -165,6 +168,14 @@ export default function Positions() {
     direction: [],
     exchange: [],
   })
+  // Closed positions (qty=0) still carry today's realized P&L by design
+  // (see calculatePnlPercent's comment - matches Zerodha's positions book:
+  // a row closed earlier today stays visible with qty=0/avg=$0.00 until
+  // day rollover, so its P&L doesn't disappear from the day's total).
+  // The summary cards above already exclude these from "Open/Long/Short"
+  // counts; this defaults the TABLE to the same view for a single source
+  // of truth, with a toggle for anyone who wants today's closed rows back.
+  const [hideClosed, setHideClosed] = useState<boolean>(true)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [sortColumn, setSortColumn] = useState<SortColumn>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -197,14 +208,17 @@ export default function Positions() {
             direction: prefs.filters.direction || [],
             exchange: prefs.filters.exchange || [],
           })
+        // Older saved prefs won't have this key - keep defaulting to true
+        // (hide closed) rather than reading `undefined` as false.
+        if (prefs.hideClosed !== undefined) setHideClosed(prefs.hideClosed)
       }
     } catch (_e) {}
   }, [])
 
   // Save preferences to localStorage
   const savePreferences = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ grouping, filters }))
-  }, [grouping, filters])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ grouping, filters, hideClosed }))
+  }, [grouping, filters, hideClosed])
 
   useEffect(() => {
     savePreferences()
@@ -305,12 +319,16 @@ export default function Positions() {
     [grouping]
   )
 
-  // Filter positions (use enhancedPositions for real-time LTP/PnL)
-  const filteredPositions = useMemo(() => {
+  // Product/direction/exchange criteria only - deliberately NOT filtered by
+  // hideClosed, so the "Total P&L" stat below keeps including today's
+  // realized P&L from closed (qty=0) positions regardless of whether the
+  // table is currently hiding those rows. hideClosed is a display
+  // preference for the table, not a claim that closed P&L stopped counting.
+  const criteriaFilteredPositions = useMemo(() => {
     return enhancedPositions.filter((pos) => {
+      const qty = pos.quantity || 0
       if (filters.product.length > 0 && !filters.product.includes(pos.product)) return false
 
-      const qty = pos.quantity || 0
       if (filters.direction.length > 0) {
         const isLong = qty > 0
         const isShort = qty < 0
@@ -325,6 +343,13 @@ export default function Positions() {
       return true
     })
   }, [enhancedPositions, filters])
+
+  // What the table/sort/group/export actually show - criteria filters plus
+  // the hideClosed display toggle.
+  const filteredPositions = useMemo(() => {
+    if (!hideClosed) return criteriaFilteredPositions
+    return criteriaFilteredPositions.filter((pos) => (pos.quantity || 0) !== 0)
+  }, [criteriaFilteredPositions, hideClosed])
 
   // Sort positions
   const sortedPositions = useMemo(() => {
@@ -386,15 +411,17 @@ export default function Positions() {
     return groups
   }, [sortedPositions, grouping, getGroupKey])
 
-  // Calculate stats
+  // Calculate stats - deliberately from criteriaFilteredPositions, not the
+  // hideClosed-aware filteredPositions, so toggling "Hide closed positions"
+  // changes what the TABLE shows without changing what "Total P&L" means.
   const stats = useMemo(() => {
-    const long = filteredPositions.filter((p) => (p.quantity || 0) > 0).length
-    const short = filteredPositions.filter((p) => (p.quantity || 0) < 0).length
+    const long = criteriaFilteredPositions.filter((p) => (p.quantity || 0) > 0).length
+    const short = criteriaFilteredPositions.filter((p) => (p.quantity || 0) < 0).length
     // Only count positions with non-zero quantity as "open"
     const total = long + short
-    const totalPnl = filteredPositions.reduce((sum, p) => sum + (p.pnl || 0), 0)
+    const totalPnl = criteriaFilteredPositions.reduce((sum, p) => sum + (p.pnl || 0), 0)
     return { total, long, short, totalPnl }
-  }, [filteredPositions])
+  }, [criteriaFilteredPositions])
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -420,6 +447,7 @@ export default function Positions() {
     setFilters({ product: [], direction: [], exchange: [] })
     setGrouping('none')
     setCollapsedGroups(new Set())
+    setHideClosed(true)
   }
 
   const toggleGroup = (groupKey: string) => {
@@ -438,7 +466,8 @@ export default function Positions() {
     filters.product.length > 0 ||
     filters.direction.length > 0 ||
     filters.exchange.length > 0 ||
-    grouping !== 'none'
+    grouping !== 'none' ||
+    !hideClosed
 
   const handleClosePosition = async (position: Position) => {
     try {
@@ -493,7 +522,11 @@ export default function Positions() {
         sanitizeCSV(p.symbol),
         sanitizeCSV(p.exchange),
         ...(isCrypto ? [] : [sanitizeCSV(p.product)]),
-        sanitizeCSV(p.quantity),
+        sanitizeCSV(
+          (p.exchange === 'CRYPTO' && p.lot_size)
+            ? p.quantity * p.lot_size
+            : p.quantity
+        ),
         sanitizeCSV(p.average_price),
         sanitizeCSV(p.ltp),
         sanitizeCSV(p.pnl),
@@ -574,7 +607,8 @@ export default function Positions() {
       totalPnl += pos.pnl || 0
       const avgPrice = pos.average_price || 0
       const qty = Math.abs(pos.quantity || 0)
-      totalInvestment += avgPrice * qty
+      const lotSize = Number(pos.lot_size) || 1
+      totalInvestment += avgPrice * qty * lotSize
     })
 
     const pnlPercent = totalInvestment > 0 ? (totalPnl / totalInvestment) * 100 : 0
@@ -684,6 +718,30 @@ export default function Positions() {
                       </label>
                     ))}
                   </div>
+                </div>
+
+                <div className="border-t" />
+
+                {/* Display */}
+                <div className="space-y-3">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Display
+                  </Label>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 rounded hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={hideClosed}
+                      onChange={(e) => setHideClosed(e.target.checked)}
+                      className="accent-pink-500"
+                    />
+                    <span>
+                      Hide closed positions
+                      <span className="block text-xs text-muted-foreground">
+                        Rows with qty = 0 from a trade closed earlier today (still carries realized
+                        P&amp;L until day rollover)
+                      </span>
+                    </span>
+                  </label>
                 </div>
 
                 <div className="border-t" />
@@ -976,7 +1034,9 @@ export default function Positions() {
                                   position.quantity > 0 ? 'text-green-600' : 'text-red-600'
                                 )}
                               >
-                                {position.quantity}
+                                {(position.exchange === 'CRYPTO' && position.lot_size)
+                                  ? position.quantity * position.lot_size
+                                  : position.quantity}
                               </TableCell>
                               <TableCell className="w-[120px] text-right font-mono">
                                 {formatCurrency(position.average_price)}

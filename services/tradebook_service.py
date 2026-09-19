@@ -26,13 +26,19 @@ def format_trade_data(trade_data):
         "filled_quantity",
         "traded_quantity",
     }
+    # lot_size can be 0.01 (ETHUSD.P) — rounding to 2dp gives 0.0.
+    passthrough_fields = {"lot_size"}
 
     if isinstance(trade_data, list):
         return [
             {
-                key: (int(value) if value == int(value) else value)
-                if (key.lower() in quantity_fields and isinstance(value, (int, float)))
-                else (format_decimal(value) if isinstance(value, (int, float)) else value)
+                key: value
+                if key.lower() in passthrough_fields
+                else (
+                    (int(value) if value == int(value) else value)
+                    if (key.lower() in quantity_fields and isinstance(value, (int, float)))
+                    else (format_decimal(value) if isinstance(value, (int, float)) else value)
+                )
                 for key, value in item.items()
             }
             for item in trade_data

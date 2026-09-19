@@ -699,7 +699,7 @@ Pages updated:
 | **Quantity** | Integer (lots) | Fractional (0.001 BTC) |
 | **Currency** | INR (already handled) | USD (already handled) |
 | **Trading hours** | IST market hours | 24/7 |
-| **Symbol format** | RELIANCE, NIFTY24JAN24000CE | BTCUSD.P, ETHUSD-25MAR25-2000-C |
+| **Symbol format** | RELIANCE, NIFTY24JAN24000CE | BTCUSDFUT, ETHUSD-25MAR25-2000-C |
 
 The quantity formatting already handles fractional values since Delta Exchange uses `float` for sizes. Currency formatting is already handled by `makeFormatCurrency()`.
 

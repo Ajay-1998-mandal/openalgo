@@ -96,6 +96,15 @@ def map_order_data(order_data):
             order["triggerPrice"] = float(order.get("stop_price") or 0)
             order["updateTime"] = order.get("created_at", "")
 
+            # Contract value: 1 contract of DOGEUSD = 100 DOGE, ETHUSD.P = 0.01 ETH.
+            # The UI uses this to display real units instead of the raw contract count.
+            lot_size = 1.0
+            if order.get("tradingSymbol"):
+                sym_info = get_symbol_info(order["tradingSymbol"], "CRYPTO")
+                if sym_info and getattr(sym_info, "contract_value", None) is not None:
+                    lot_size = float(sym_info.contract_value)
+            order["lot_size"] = lot_size
+
             # Reduce-only flag (crypto-specific, pass through for display)
             order["reduceOnly"] = bool(order.get("reduce_only", False))
 
@@ -246,6 +255,7 @@ def transform_order_data(orders):
                 "orderid": order.get("orderId", ""),
                 "order_status": order.get("orderStatus", ""),
                 "timestamp": order.get("updateTime", ""),
+                "lot_size": float(order.get("lot_size", 1.0)),
             }
 
             transformed_orders.append(transformed_order)
@@ -315,6 +325,17 @@ def map_trade_data(trade_data):
             trade["tradedPrice"] = float(trade.get("price") or 0)
             trade["transactionType"] = trade.get("side", "").upper()
             trade["updateTime"] = trade.get("created_at", "")
+            # Delta's own notional is the real USD value — more reliable than
+            # (contract_count × price) which would be $0.09 instead of $9.
+            trade["notional"] = float(trade.get("notional") or 0)
+
+            # Contract value for display: 1 DOGEUSD contract = 100 DOGE, etc.
+            lot_size = 1.0
+            if symbol_from_db:
+                sym_info = get_symbol_info(symbol_from_db, "CRYPTO")
+                if sym_info and getattr(sym_info, "contract_value", None) is not None:
+                    lot_size = float(sym_info.contract_value)
+            trade["lot_size"] = lot_size
 
             logger.debug(
                 f"Mapped fill {trade.get('id', '')}: "
@@ -360,16 +381,21 @@ def transform_tradebook_data(tradebook_data):
             except (TypeError, ValueError):
                 price = 0.0
 
+            notional = float(trade.get("notional") or 0)
+            lot_size = float(trade.get("lot_size", 1.0))
+            real_qty = quantity * lot_size if lot_size != 1 else quantity
+
             transformed_trade = {
                 "symbol": trade.get("tradingSymbol", ""),
                 "exchange": trade.get("exchangeSegment", ""),
                 "product": trade.get("productType", ""),
                 "action": trade.get("transactionType", ""),
-                "quantity": quantity,
+                "quantity": real_qty,
                 "average_price": price,
-                "trade_value": quantity * price,
+                "trade_value": notional if notional > 0 else real_qty * price,
                 "orderid": trade.get("orderId", ""),
                 "timestamp": trade.get("updateTime", ""),
+                "lot_size": lot_size,
             }
             transformed_data.append(transformed_trade)
         return transformed_data

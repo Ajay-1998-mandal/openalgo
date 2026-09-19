@@ -84,15 +84,21 @@ def ema_strategy():
             start_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
             # Fetch 1-minute historical data using OpenAlgo
+            # Groww API expects numeric minutes: 1, 5, 10, 60, 240, 1440, 10080
             df = client.history(
                 symbol=symbol,
                 exchange=exchange,
-                interval="1m",
+                interval="1",
                 start_date=start_date,
                 end_date=end_date
             )
 
-            # Check for valid data
+            # Check for valid data - handle both DataFrame (success) and dict (error)
+            if isinstance(df, dict):
+                print(f"API Error: {df.get('message', 'Unknown error')}")
+                time.sleep(15)
+                continue
+
             if df.empty:
                 print("DataFrame is empty. Retrying...")
                 time.sleep(15)

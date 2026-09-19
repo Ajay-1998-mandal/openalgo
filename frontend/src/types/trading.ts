@@ -23,6 +23,7 @@ export interface Order {
   orderid: string
   order_status: 'complete' | 'rejected' | 'cancelled' | 'open' | 'pending' | 'trigger pending'
   timestamp: string
+  lot_size?: number // contract_value multiplier (e.g. 100 for DOGEUSD, 0.01 for ETHUSD.P)
 }
 
 export interface Trade {
@@ -35,6 +36,7 @@ export interface Trade {
   product: string
   orderid: string
   timestamp: string
+  lot_size?: number // contract_value (e.g. 100 for DOGEUSD)
 }
 
 export interface Holding {

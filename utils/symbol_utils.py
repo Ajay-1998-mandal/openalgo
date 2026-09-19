@@ -11,7 +11,7 @@ from utils.constants import INSTRUMENT_PERPFUT
 def get_underlying_quote_symbol(base_symbol: str, exchange: str) -> str:
     """Return the quote symbol for an underlying, appending the crypto quote currency if needed.
 
-    For crypto exchanges: canonical perpetual (e.g. BTCUSD.P)
+    For crypto exchanges: canonical perpetual (e.g. BTCUSDFUT)
     For all other exchanges: base_symbol unchanged
     """
     if exchange.upper() in CRYPTO_EXCHANGES:
@@ -23,7 +23,7 @@ def get_underlying_quote_symbol(base_symbol: str, exchange: str) -> str:
         )
         if _perp:
             return _perp[0]["symbol"]
-        return f"{base_symbol.upper()}USD.P"
+        return f"{base_symbol.upper()}USDFUT"
     return base_symbol
 
 

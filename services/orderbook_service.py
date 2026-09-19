@@ -30,13 +30,17 @@ def format_order_data(order_data):
         "unfilledqty",
         "unfilled_quantity",
     }
+    # lot_size can be as small as 0.001 (BTCUSDFUT) — rounding to 2dp gives 0.0.
+    passthrough_fields = {"lot_size"}
 
     if isinstance(order_data, list):
         formatted_orders = []
         for item in order_data:
             formatted_item = {}
             for key, value in item.items():
-                if isinstance(value, (int, float)):
+                if key.lower() in passthrough_fields:
+                    formatted_item[key] = value
+                elif isinstance(value, (int, float)):
                     # Keep quantity fields as integers when whole, preserve float for fractional (crypto spot)
                     if key.lower() in quantity_fields:
                         formatted_item[key] = int(value) if value == int(value) else value

@@ -70,7 +70,7 @@ class HistorySchema(Schema):
                 "15s",
                 "30s",
                 "45s",
-                # Minutes intervals
+                # Minutes intervals - standard format
                 "1m",
                 "2m",
                 "3m",
@@ -79,17 +79,31 @@ class HistorySchema(Schema):
                 "15m",
                 "20m",
                 "30m",
-                # Hours intervals
+                # Minutes intervals - numeric (Groww API native format)
+                "1",
+                "5",
+                "10",
+                # Hours intervals - standard format
                 "1h",
                 "2h",
                 "3h",
                 "4h",
-                # Daily, Weekly, Monthly, Quarterly, Yearly intervals
+                "6h",          # Delta Exchange
+                # Hours intervals - numeric minutes (Groww API native format)
+                "60",
+                "120",
+                "180",
+                "240",
+                "360",         # Delta Exchange 6h = 360min
+                # Daily, Weekly, Monthly, Quarterly, Yearly intervals - standard format
                 "D",
                 "W",
                 "M",
                 "Q",
                 "Y",
+                # Daily/Weekly - numeric minutes (Groww API native format)
+                "1440",
+                "10080",
             ]
         ),
     )
@@ -121,8 +135,14 @@ class TickerSchema(Schema):
     symbol = fields.Str(required=True)  # Combined exchange:symbol format
     interval = fields.Str(
         required=True,
-        validate=validate.OneOf(["1m", "5m", "15m", "30m", "1h", "4h", "D", "W", "M"]),
-    )  # Supported intervals: 1m, 5m, 15m, 30m, 1h, 4h, D, W, M etc.
+        validate=validate.OneOf([
+            # Standard format
+            "1m", "2m", "3m", "5m", "10m", "15m", "20m", "30m",
+            "1h", "2h", "3h", "4h", "6h", "D", "W", "M",
+            # Numeric minutes (Groww API native format)
+            "1", "5", "10", "60", "120", "180", "240", "360", "1440", "10080"
+        ]),
+    )  # Supported intervals: 1m/1, 2m, 3m, 5m/5, 10m, 15m, 20m, 30m, 1h/60, 2h/120, 3h/180, 4h/240, 6h/360, D/1440, W/10080
     from_ = fields.Str(
         data_key="from", required=True, validate=validate_date_or_timestamp
     )  # YYYY-MM-DD or millisecond timestamp

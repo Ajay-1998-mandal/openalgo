@@ -36,12 +36,6 @@ Perpetual (no-expiry) futures are the dominant crypto derivative.
 symbol never encodes price — `BTCUSDFUT` marks the contract; its last-traded
 value (≈ 62,000 USD today) lives in quotes, not the symbol.
 
-> **Known discrepancy (tracked for P7 cleanup):** the code currently emits
-> `…FUT` (e.g. `BTCUSDFUT`) while an in-code comment and some search aliases
-> still reference the TradingView `.P` suffix (`BTCUSD.P`). The **stored/served
-> canonical form is `BTCUSDFUT`**. Resolving this comment/code/alias
-> inconsistency is a P7 task.
-
 ### Dated Futures Format  *(reuses the Indian future renderer)*
 
 **Format:** `[Underlying][ExpiryDate]FUT` — identical to Indian futures.

@@ -176,7 +176,7 @@ def _to_canonical_symbol(delta_symbol: str, instrument_type: str, expiry: str) -
     Convert a Delta Exchange native symbol to the OpenAlgo canonical CRYPTO format.
 
     Canonical formats (standard Indian F&O-style symbology — no dashes):
-        Perpetual future : BTCUSD.P             (delta: BTCUSD  — TradingView .P suffix)
+        Perpetual future : BTCUSDFUT             (delta: BTCUSD  — OpenAlgo FUT suffix for perpetuals)
         Dated future     : BTC28FEB25FUT        (delta: BTCUSD28Feb2025 — extract underlying + expiry)
         Call option      : BTC28FEB2580000CE    (delta: C-BTC-80000-280225)
         Put option       : BTC28FEB2580000PE    (delta: P-BTC-80000-280225)
@@ -233,9 +233,9 @@ def _to_canonical_symbol(delta_symbol: str, instrument_type: str, expiry: str) -
         # duplicating the expiry date in the canonical symbol.
         return f"{base}{expiry_alpha}FUT"
 
-    # ── Perpetual futures: BTCUSD → BTCUSD.P (TradingView perpetual notation) ──
-    # .P is the TradingView-standard suffix for perpetuals and avoids colliding
-    # with BTCUSDT (Binance BTC/Tether spot pair — a completely different asset).
+    # ── Perpetual futures: BTCUSD → BTCUSDFUT (Indian F&O-style suffix) ──
+    # This matches the Indian F&O convention where futures end with FUT.
+    # The .P suffix is TradingView notation; OpenAlgo uses FUT for consistency.
     if instrument_type == "PERPFUT":
         return delta_symbol + "FUT"
 
@@ -268,9 +268,8 @@ CONTRACT_TYPE_MAP = {
 # Maps user-supplied aliases → canonical Delta Exchange symbol prefix / exact match.
 # Keys are stored upper-case; resolution happens case-insensitively.
 # Add further pairs here as users report lookup failures.
-# Maps user-supplied symbol aliases to the canonical Delta Exchange symbol prefix
-# used in the database.  search_symbols() applies a LIKE query after alias resolution,
-# so partial matches (e.g. "BTCUSD" → finds "BTCUSD.P") work without explicit entries.
+# search_symbols() applies a LIKE query after alias resolution,
+# so partial matches (e.g. "BTCUSD" → finds "BTCUSDFUT") work without explicit entries.
 # Only add entries here for genuinely-different ticker names (not convention variants).
 SYMBOL_ALIASES: dict[str, str] = {
     "NEARBRC": "NEARUSD",   # alternative ticker heard on TradingView

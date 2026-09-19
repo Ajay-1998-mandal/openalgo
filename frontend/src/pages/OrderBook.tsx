@@ -386,7 +386,11 @@ export default function OrderBook() {
         sanitizeCSV(o.symbol),
         sanitizeCSV(o.exchange),
         sanitizeCSV(o.action),
-        sanitizeCSV(o.quantity),
+        sanitizeCSV(
+          (o.exchange === 'CRYPTO' && o.lot_size)
+            ? o.quantity * o.lot_size
+            : o.quantity
+        ),
         sanitizeCSV(o.price),
         sanitizeCSV(o.trigger_price),
         sanitizeCSV(o.pricetype),
@@ -728,7 +732,11 @@ export default function OrderBook() {
                                 {order.action}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right font-mono">{order.quantity}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {(order.exchange === 'CRYPTO' && order.lot_size)
+                                ? order.quantity * order.lot_size
+                                : order.quantity}
+                            </TableCell>
                             <TableCell className="text-right font-mono">
                               {formatCurrency(order.price)}
                             </TableCell>

@@ -32,6 +32,7 @@ _UNDERLYING_PATTERN = re.compile(
 # Indian F&O-style format (no dashes): BTC28FEB2580000CE / BTC28FEB25FUT
 # The underlying is the run of leading alpha characters before the first digit.
 # Perpetuals (BTCUSDT) have no embedded digit — handled separately via suffix stripping.
+# Note: OpenAlgo canonical format for perpetuals is BTCUSDFUT (FUT suffix, not .P)
 # Anchored to expiry date pattern (DDMMMYY) so numeric-prefix underlyings like
 # 1INCH28FEB25FUT are handled correctly. Non-greedy capture stops at first DDMMMYY match.
 _CRYPTO_UNDERLYING_PATTERN = re.compile(
@@ -69,9 +70,9 @@ def extract_underlying_from_symbol(symbol: str, exchange: str) -> str | None:
         m = _CRYPTO_UNDERLYING_PATTERN.match(upper)
         if m:
             return m.group(1)
-        # Perpetual canonical: BTCUSD.P / BTC_INR.P — strip .P then quote-currency suffix
-        if upper.endswith(".P"):
-            upper = upper[:-2]
+        # Perpetual canonical: BTCUSDFUT / BTCINRFUT — strip FUT then quote-currency suffix
+        if upper.endswith("FUT"):
+            upper = upper[:-3]
         for suffix in ("USDT", "USD", "_INR", "INR"):
             if upper.endswith(suffix) and len(upper) > len(suffix):
                 return upper[: -len(suffix)]
@@ -133,7 +134,7 @@ class SymbolData:
     instrumenttype: str | None = None
     tick_size: float | None = None
     underlying: str | None = None  # Extracted from OpenAlgo symbol format for F&O
-    contract_value: float | None = None  # Contract multiplier (e.g. 0.001 for BTCUSD.P)
+    contract_value: float | None = None  # Contract multiplier (e.g. 0.001 for BTCUSDFUT)
 
 
 class BrokerSymbolCache:
@@ -615,7 +616,7 @@ class BrokerSymbolCache:
             #   CE      → symbol ends with "CE"  (e.g. BTC28FEB2580000CE)
             #   PE      → symbol ends with "PE"  (e.g. BTC28FEB2580000PE)
             #   FUT     → symbol ends with "FUT" (e.g. BTC28FEB25FUT)
-            #   PERPFUT → stored instrumenttype field (e.g. BTCUSD.P)
+            #   PERPFUT → stored instrumenttype field (e.g. BTCUSDFUT)
             if inst_type:
                 symbol_upper = symbol_data.symbol.upper()
                 if inst_type == "FUT" and not symbol_upper.endswith("FUT"):
