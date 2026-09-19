@@ -510,11 +510,14 @@ def start_strategy_process(strategy_id):
             strategy_env["OPENALGO_STRATEGY_EXCHANGE"] = normalize_exchange(
                 config.get("exchange")
             )
-            # Point at this instance's own port: install-multi.sh runs each
-            # instance on its own FLASK_PORT, so a fixed 5000 would send a
-            # second instance's strategies to the first instance.
+            # Point at this instance. Server installs bind gunicorn to a unix
+            # socket (no TCP port), so prefer HOST_SERVER, the instance's own
+            # URL; fall back to FLASK_PORT, which differs per instance under
+            # install-multi.sh. Same order as the MCP loopback resolution.
             strategy_env.setdefault(
-                "OPENALGO_HOST", f"http://127.0.0.1:{os.getenv('FLASK_PORT', '5000')}"
+                "OPENALGO_HOST",
+                os.getenv("HOST_SERVER", "").strip()
+                or f"http://127.0.0.1:{os.getenv('FLASK_PORT', '5000')}",
             )
             try:
                 from database.auth_db import get_api_key_for_tradingview
